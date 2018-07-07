@@ -40,6 +40,7 @@ final class InputStreamIterator[+IS <: InputStream](val inputStream: IS)
 
   @inline private def failEmpty(): Nothing = throw new NoSuchElementException("InputStreamIterator is empty.")
 
+  /** Reads byte directly from inputStream, bypassing peekByte. Closes the stream if the end is reached */
   private def readFromInputStream(): Int = {
     val r = inputStream.read()
     if (r == PeekByte.FINISHED && !closed) {
@@ -88,6 +89,7 @@ final class InputStreamIterator[+IS <: InputStream](val inputStream: IS)
     peekByte
   }
 
+  /** Closes the underlying inputStream */
   def close(): Unit = {
     inputStream.close()
     closed = true
@@ -97,10 +99,10 @@ final class InputStreamIterator[+IS <: InputStream](val inputStream: IS)
   // Optimizing overrides
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   def copyToArray(xs: Array[Byte]): xs.type =
-    copyToArray(xs, 0, xs.length)
+    copyToArray(xs = xs, start = 0, len = xs.length)
 
   def copyToArray(xs: Array[Byte], start: Int): xs.type =
-    copyToArray(xs, start, xs.length)
+    copyToArray(xs = xs, start = start, len = xs.length)
 
   def copyToArray(xs: Array[Byte], start: Int, len: Int): xs.type = {
     if (!(closed || peekByte == PeekByte.FINISHED ||  len <= 0 || start >= xs.length)) {
@@ -126,7 +128,6 @@ object InputStreamIterator {
     /** Returns true if peekByte is not empty or finished */
     def isFull(peekByte: Int): Boolean = peekByte >= 0
   }
-
 
   /** Creates an InputStreamIterator over this InputStream */
   def apply[IS <: InputStream](inputStream: IS): InputStreamIterator[IS] = new InputStreamIterator(inputStream)

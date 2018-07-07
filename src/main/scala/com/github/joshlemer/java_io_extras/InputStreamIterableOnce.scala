@@ -8,6 +8,5 @@ final class InputStreamIterableOnce[IS <: InputStream](val inputStream: IS) exte
 }
 
 object InputStreamIterableOnce {
-
   def apply[IS <: InputStream](inputStream: IS): InputStreamIterableOnce[IS] = new InputStreamIterableOnce(inputStream)
 }
