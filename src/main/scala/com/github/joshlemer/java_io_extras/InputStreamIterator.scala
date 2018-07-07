@@ -17,7 +17,7 @@ import scala.collection.{AbstractIterator, BufferedIterator}
   * @param inputStream the inputStream to iterate over
   * @tparam IS the type of the input stream, in case callers would like to have access to specialized suptypes
   */
-class InputStreamIterator[+IS <: InputStream](val inputStream: IS)
+final class InputStreamIterator[+IS <: InputStream](val inputStream: IS)
   extends AbstractIterator[Byte] with BufferedIterator[Byte] {
 
   /** A buffered "peeked" byte loaded from the inner inputStream. Calls to hasNext have no choice but to peek into the

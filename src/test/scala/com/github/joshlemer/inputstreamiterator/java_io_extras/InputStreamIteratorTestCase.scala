@@ -114,6 +114,33 @@ class InputStreamIteratorTestCase extends TestCase {
 
     assert(!isi.hasNext)
   }
+  def testFilter(): Unit = {
+    val isi = makeInputStreamIterator(10, 11, 12, 13, 14)
+    assert(isi.filter(_ > 12).toList == List(13, 14))
+    assert(isi.inputStream.isClosed)
+  }
+  def testTake(): Unit = {
+    val isi = makeInputStreamIterator(10, 11, 12, 13, 14)
+    assert(isi.take(3).toList == List(10,11,12))
+    assert(!isi.inputStream.isClosed)
+  }
+
+  def testHead(): Unit = {
+    {
+      val isi = makeInputStreamIterator()
+
+      assert(Try(isi.head).isFailure)
+      assert(isi.inputStream.isClosed)
+    }
+    {
+      val isi = makeInputStreamIterator(1)
+
+      assert(isi.head == 1)
+      assert(isi.head == 1)
+      assert(isi.head == 1)
+      assert(!isi.inputStream.isClosed)
+    }
+  }
 }
 
 class TestInputStream(val byteArrayInputStream: ByteArrayInputStream) extends InputStream {
