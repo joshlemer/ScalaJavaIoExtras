@@ -17,7 +17,7 @@ import scala.collection.{AbstractIterator, BufferedIterator}
   * @param inputStream the inputStream to iterate over
   * @tparam IS the type of the input stream, in case callers would like to have access to specialized suptypes
   */
-class InputStreamIterator[IS <: InputStream](val inputStream: IS)
+class InputStreamIterator[+IS <: InputStream](val inputStream: IS)
   extends AbstractIterator[Byte] with BufferedIterator[Byte] {
 
   /** A buffered "peeked" byte loaded from the inner inputStream. Calls to hasNext have no choice but to peek into the
@@ -48,7 +48,7 @@ class InputStreamIterator[IS <: InputStream](val inputStream: IS)
     r
   }
 
-  override def hasNext: Boolean = peek() >= 0
+  override def hasNext: Boolean = !closed && PeekByte.isFull(peek())
 
   override def next(): Byte = {
     if (peekByte == PeekByte.FINISHED) {
@@ -69,9 +69,17 @@ class InputStreamIterator[IS <: InputStream](val inputStream: IS)
     }
   }
 
-  override def head: Byte =
-    peek().toByte
+  override def head: Byte = {
+    val peeked = peek()
 
+    if (PeekByte.isFull(peeked)) {
+      peeked.toByte
+    } else {
+      failEmpty()
+    }
+  }
+
+  /** Returns the next Byte if the iterator has more elements. Otherwise -1 */
   def peek(): Int = {
     if (peekByte == PeekByte.EMPTY) {
       peekByte = readFromInputStream()
@@ -84,13 +92,42 @@ class InputStreamIterator[IS <: InputStream](val inputStream: IS)
     inputStream.close()
     closed = true
   }
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Optimizing overrides
+  ////////////////////////////////////////////////////////////////////////////////////////////////////
+  def copyToArray(xs: Array[Byte]): xs.type =
+    copyToArray(xs, 0, xs.length)
+
+  def copyToArray(xs: Array[Byte], start: Int): xs.type =
+    copyToArray(xs, start, xs.length)
+
+  def copyToArray(xs: Array[Byte], start: Int, len: Int): xs.type = {
+    if (!(closed || peekByte == PeekByte.FINISHED ||  len <= 0 || start >= xs.length)) {
+      if (PeekByte.isFull(peekByte)) {
+        xs(start) = peekByte.toByte
+        peekByte = PeekByte.EMPTY
+        inputStream.read(xs, start + 1, len - 1)
+      } else {
+        inputStream.read(xs, start, len)
+      }
+    }
+    xs
+  }
 }
 
 object InputStreamIterator {
-  final object PeekByte {
-    val EMPTY: Int = -2
+  private[java_io_extras] object PeekByte {
+    /** Indicates the end of the stream has been reached */
     val FINISHED: Int = -1
+    /** Indicates the peekByte is empty */
+    val EMPTY: Int = -2
+
+    /** Returns true if peekByte is not empty or finished */
+    def isFull(peekByte: Int): Boolean = peekByte >= 0
   }
 
+
+  /** Creates an InputStreamIterator over this InputStream */
   def apply[IS <: InputStream](inputStream: IS): InputStreamIterator[IS] = new InputStreamIterator(inputStream)
 }

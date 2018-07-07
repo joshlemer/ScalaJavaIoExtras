@@ -111,6 +111,8 @@ class InputStreamIteratorTestCase extends TestCase {
     val arr = new Array[Byte](10)
     isi.copyToArray(arr)
     assert(arr sameElements  Array(10,11,12,13,14,0,0,0,0,0))
+
+    assert(!isi.hasNext)
   }
 }
 
