@@ -1,11 +1,10 @@
 package com.github.joshlemer.java_io_extras
 
-import java.io.InputStream
-
+import java.io.Reader
 
 import scala.collection.{AbstractIterator, BufferedIterator}
 
-/** An Iterator[Byte] over a [[java.io.InputStream]], which consumes the InputStream, and automatically closes it when
+/** An Iterator[Char] over a [[java.io.Reader]], which consumes the Reader, and automatically closes it when
   * reaching the end.
   *
   * If this iterator is not completely consumed, care should be taken to ensure this iterator is closed by calling
@@ -13,13 +12,13 @@ import scala.collection.{AbstractIterator, BufferedIterator}
   *
   * Automatically closes
   *
-  * @param inputStream the inputStream to iterate over
-  * @tparam IS the type of the input stream, in case callers would like to have access to specialized suptypes
+  * @param reader the reader to iterate over
+  * @tparam R the type of the reader, in case callers would like to have access to specialized suptypes
   */
-final class InputStreamIterator[+IS <: InputStream](val inputStream: IS)
-  extends AbstractIterator[Byte] with BufferedIterator[Byte] {
+final class ReaderIterator[+R <: Reader](val reader: R)
+  extends AbstractIterator[Char] with BufferedIterator[Char] {
 
-  /** A buffered "peeked" byte loaded from the inner inputStream. Calls to hasNext have no choice but to peek into the
+  /** A buffered "peeked" byte loaded from the inner reader. Calls to hasNext have no choice but to peek into the
     * InputStream and compare against -1, which indicates the stream has finished. In the case that the stream was not
     * empty, we must buffer that byte for the next invocation of `next()` to not drop the byte.
     *
@@ -40,8 +39,8 @@ final class InputStreamIterator[+IS <: InputStream](val inputStream: IS)
   @inline private def failEmpty(): Nothing = throw new NoSuchElementException("InputStreamIterator is empty.")
 
   /** Reads byte directly from inputStream, bypassing peekByte. Closes the stream if the end is reached */
-  private def readFromInputStream(): Int = {
-    val r = inputStream.read()
+  private def readFromReader(): Int = {
+    val r = reader.read()
     if (r == PeekByte.FINISHED && !closed) {
       close()
     }
@@ -50,30 +49,30 @@ final class InputStreamIterator[+IS <: InputStream](val inputStream: IS)
 
   override def hasNext: Boolean = !closed && PeekByte.isFull(peek())
 
-  override def next(): Byte = {
+  override def next(): Char = {
     if (peekByte == PeekByte.FINISHED) {
       failEmpty()
     } else if (peekByte >= 0) {
       val temp = peekByte
       peekByte = PeekByte.EMPTY
-      temp.toByte
+      temp.toChar
     } else {
       // peekByte must be PeekByte.EMPTY
-      val read = readFromInputStream()
+      val read = readFromReader()
       if (read == PeekByte.FINISHED) {
         peekByte = PeekByte.FINISHED
         failEmpty()
       } else {
-        read.toByte
+        read.toChar
       }
     }
   }
 
-  override def head: Byte = {
+  override def head: Char = {
     val peeked = peek()
 
     if (PeekByte.isFull(peeked)) {
-      peeked.toByte
+      peeked.toChar
     } else {
       failEmpty()
     }
@@ -82,7 +81,7 @@ final class InputStreamIterator[+IS <: InputStream](val inputStream: IS)
   /** Returns the next Byte if the iterator has more elements. Otherwise -1 */
   def peek(): Int = {
     if (peekByte == PeekByte.EMPTY) {
-      peekByte = readFromInputStream()
+      peekByte = readFromReader()
     }
 
     peekByte
@@ -90,35 +89,35 @@ final class InputStreamIterator[+IS <: InputStream](val inputStream: IS)
 
   /** Closes the underlying inputStream */
   def close(): Unit = {
-    inputStream.close()
+    reader.close()
     closed = true
   }
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   // Optimizing overrides
   ////////////////////////////////////////////////////////////////////////////////////////////////////
-  def copyToArray(xs: Array[Byte]): xs.type =
+  def copyToArray(xs: Array[Char]): xs.type =
     copyToArray(xs = xs, start = 0, len = xs.length)
 
-  def copyToArray(xs: Array[Byte], start: Int): xs.type =
+  def copyToArray(xs: Array[Char], start: Int): xs.type =
     copyToArray(xs = xs, start = start, len = xs.length)
 
-  def copyToArray(xs: Array[Byte], start: Int, len: Int): xs.type = {
+  def copyToArray(xs: Array[Char], start: Int, len: Int): xs.type = {
     if (!(closed || peekByte == PeekByte.FINISHED ||  len <= 0 || start >= xs.length)) {
       if (PeekByte.isFull(peekByte)) {
-        xs(start) = peekByte.toByte
+        xs(start) = peekByte.toChar
         peekByte = PeekByte.EMPTY
-        inputStream.read(xs, start + 1, len - 1)
+        reader.read(xs, start + 1, len - 1)
       } else {
-        inputStream.read(xs, start, len)
+        reader.read(xs, start, len)
       }
     }
     xs
   }
 }
 
-object InputStreamIterator {
+object ReaderIterator {
 
   /** Creates an InputStreamIterator over this InputStream */
-  def apply[IS <: InputStream](inputStream: IS): InputStreamIterator[IS] = new InputStreamIterator(inputStream)
+  def apply[R <: Reader](reader: R): Iterator[Char] = new ReaderIterator(reader)
 }
