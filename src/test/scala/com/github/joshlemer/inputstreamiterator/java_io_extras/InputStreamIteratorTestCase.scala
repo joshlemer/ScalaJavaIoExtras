@@ -141,6 +141,13 @@ class InputStreamIteratorTestCase extends TestCase {
       assert(!isi.inputStream.isClosed)
     }
   }
+
+  def testImplicitConverters(): Unit = {
+    import com.github.joshlemer.java_io_extras.Converters._
+
+    val iter: Iterator[Byte] = Iterator(1,2,3,4,5,6,7,8)
+    assert(iter.inputStream.iterator.toList == List(1,2,3,4,5,6,7,8))
+  }
 }
 
 class TestInputStream(val byteArrayInputStream: ByteArrayInputStream) extends InputStream {
